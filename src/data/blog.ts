@@ -14,6 +14,18 @@ type Metadata = {
   image?: string;
 };
 
+// Helper to make a string URL-safe
+function slugify(str: string) {
+  return str
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, "-") // Replace spaces with -
+    .replace(/&/g, "-and-") // Replace & with 'and'
+    .replace(/[^\w\u4e00-\u9fa5\-]+/g, "") // Remove all non-word characters (keep unicode/chinese) except for -
+    .replace(/\-\-+/g, "-"); // Replace multiple - with single -
+}
+
 function getBlogFiles(dir: string): string[] {
   let results: string[] = [];
   const list = fs.readdirSync(dir);
@@ -52,14 +64,20 @@ export async function markdownToHTML(markdown: string) {
 
 export async function getPost(slug: string) {
   const contentDir = path.join(process.cwd(), "content");
-  let filePath = path.join(contentDir, `${slug}.mdx`);
-  let isMDX = true;
-  if (!fs.existsSync(filePath)) {
-    filePath = path.join(contentDir, `${slug}.md`);
-    isMDX = false;
-  }
+  const blogFiles = getBlogFiles(contentDir);
+  
+  // Find the file that matches the slugified path
+  const filePath = blogFiles.find(file => {
+    const relativePath = path.relative(contentDir, file);
+    const fileSlug = relativePath
+      .replace(/\.mdx?$/, "")
+      .split(path.sep)
+      .map(slugify)
+      .join("/");
+    return fileSlug === slug;
+  });
 
-  if (!fs.existsSync(filePath)) {
+  if (!filePath || !fs.existsSync(filePath)) {
     return null;
   }
 
@@ -69,7 +87,7 @@ export async function getPost(slug: string) {
   // Extract title if missing
   if (!metadata.title) {
     const h1Match = rawContent.match(/^#\s+(.*)$/m);
-    metadata.title = h1Match ? h1Match[1] : path.basename(slug);
+    metadata.title = h1Match ? h1Match[1] : path.basename(filePath, path.extname(filePath));
   }
 
   // Extract publishedAt if missing
@@ -102,7 +120,11 @@ async function getAllPosts(dir: string) {
   const posts = await Promise.all(
     blogFiles.map(async (fullPath) => {
       const relativePath = path.relative(dir, fullPath);
-      const slug = relativePath.replace(/\.mdx?$/, "");
+      const slug = relativePath
+        .replace(/\.mdx?$/, "")
+        .split(path.sep)
+        .map(slugify)
+        .join("/");
       let post = await getPost(slug);
       if (!post) return null;
       return {
