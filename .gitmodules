@@ -1,0 +1,3 @@
+[submodule "content/obsidian"]
+	path = content/obsidian
+	url = https://github.com/actualchao/blog.git

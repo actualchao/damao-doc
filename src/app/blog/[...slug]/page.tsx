@@ -7,17 +7,22 @@ import { Suspense } from "react";
 
 export async function generateStaticParams() {
   const posts = await getBlogPosts();
-  return posts.map((post) => ({ slug: post.slug }));
+  return posts.map((post) => ({ slug: post.slug.split("/") }));
 }
 
 export async function generateMetadata({
   params,
 }: {
   params: {
-    slug: string;
+    slug: string[];
   };
 }): Promise<Metadata | undefined> {
-  let post = await getPost(params.slug);
+  const slugPath = params.slug.join("/");
+  let post = await getPost(slugPath);
+
+  if (!post) {
+    return;
+  }
 
   let {
     title,
@@ -55,10 +60,11 @@ export default async function Blog({
   params,
 }: {
   params: {
-    slug: string;
+    slug: string[];
   };
 }) {
-  let post = await getPost(params.slug);
+  const slugPath = params.slug.join("/");
+  let post = await getPost(slugPath);
 
   if (!post) {
     notFound();

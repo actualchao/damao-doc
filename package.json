@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "postinstall": "git submodule update --init --recursive",
+    "build": "git submodule update --remote --recursive && next build",
     "start": "next start",
     "lint": "next lint"
   },
